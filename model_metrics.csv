@@ -1,0 +1,4 @@
+model,r2_random,rmse_random,r2_spatial,rmse_spatial
+Linear Regression,0.836,0.905,0.824,0.937
+Random Forest,0.942,0.539,0.84,0.893
+XGBoost,0.953,0.486,0.854,0.854

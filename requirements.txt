@@ -1,0 +1,8 @@
+numpy
+pandas
+scipy
+scikit-learn
+xgboost
+matplotlib
+pulp==2.9.0
+highspy

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bengaluru Urban Cooling Optimizer</title>
+<style>
+:root{
+  --bg:#f4f1ea; --panel:#fffdf8; --ink:#1d1b16; --muted:#6b665b; --line:#ddd6c6; --accent:#b8400f;
+  --accent-soft:#f6e3d6; --plan:#0aa5b5; --good:#17705f; --warn-bg:#fff1c9; --warn-ink:#6a4a00; --bar:#e6dfd0;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#15140f; --panel:#1f1d17; --ink:#f1ede2; --muted:#a39d8d; --line:#3a362b; --accent:#f08a4b;
+  --accent-soft:#3b2416; --plan:#3fd4e2; --good:#5fc9b2; --warn-bg:#40330c; --warn-ink:#ffe08a; --bar:#2e2b22;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif}
+header{padding:18px 24px 12px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px 20px;align-items:flex-end;justify-content:space-between}
+h1{font:600 22px/1.2 Georgia,"Times New Roman",serif;margin:0;letter-spacing:.1px}
+header p{margin:4px 0 0;color:var(--muted);max-width:70ch}
+.sim{background:var(--warn-bg);color:var(--warn-ink);padding:6px 10px;border-radius:6px;font-size:12.5px;font-weight:600;max-width:46ch}
+main{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:16px;padding:16px 24px 32px;max-width:1500px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:1fr;padding:12px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+h2{font:600 12px/1 inherit;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+#budget{width:100%;font:600 24px/1.2 Georgia,serif;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+#budget:focus{outline:none;border-color:var(--accent)}
+#budget.bad{border-color:#c62828}
+#parsed{font-size:12.5px;color:var(--muted);margin-top:5px;min-height:18px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=range]{width:100%;accent-color:var(--accent);margin-top:10px}
+select{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.kpi b{display:block;font:600 20px/1.15 Georgia,serif;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:var(--muted)}
+.kpi.big{grid-column:1/-1;background:var(--accent-soft);border-radius:8px;padding:10px 12px}
+.kpi.big b{font-size:28px;color:var(--accent)}
+.row{display:grid;grid-template-columns:118px 1fr 74px;gap:8px;align-items:center;font-size:12.5px;margin:6px 0}
+.row .t{height:10px;background:var(--bar);border-radius:5px;overflow:hidden}
+.row .t i{display:block;height:100%;background:var(--muted);border-radius:5px}
+.row.me .t i{background:var(--accent)} .row.z .t i{background:var(--plan)}
+.row .v{text-align:right;font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center}
+.tabs .sp{flex:1}
+#mapwrap{position:relative;width:100%;max-width:760px;margin:0 auto}
+canvas{width:100%;height:auto;display:block;border-radius:8px;image-rendering:pixelated;background:var(--bg)}
+#tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.18);display:none;white-space:nowrap;z-index:2}
+#legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+#legend .ramp{height:10px;width:180px;border-radius:5px}
+#legend .dot{width:10px;height:10px;border-radius:50%;background:var(--plan);border:1.5px solid #fff;box-shadow:0 0 0 1px #0b3d44;display:inline-block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:1100px){.two{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto}
+svg text{fill:var(--muted);font-size:11px}
+ol.pipe{margin:0;padding-left:18px} ol.pipe li{margin:5px 0}
+footer{font-size:11px;color:var(--muted);text-align:center;padding:0 24px 20px}
+#csvbox{width:100%;height:110px;margin-top:8px;display:none;font:11px monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Bengaluru Urban Cooling Optimizer</h1>
+    <p>Enter any plantation budget. The optimizer chooses the 100 m cells where tree planting removes the most human heat exposure per rupee.</p>
+  </div>
+</header>
+<main>
+<section>
+  <div class="card">
+    <h2>Budget</h2>
+    <input id="budget" value="10 crore" autocomplete="off" aria-label="Budget">
+    <div id="parsed"></div>
+    <div class="chips" id="chips"></div>
+    <input type="range" id="slider" min="0" max="1000" step="1" aria-label="Budget slider">
+    <div class="note">Type an amount such as <b>50 lakh</b>, <b>1.5 cr</b>, <b>10 crore</b> or a plain rupee figure, then press Enter.</div>
+  </div>
+  <div class="card">
+    <h2>Result for this budget</h2>
+    <div class="kpis" id="kpis"></div>
+  </div>
+  <div class="card">
+    <h2>Against simple strategies</h2>
+    <div id="compare"></div>
+    <div class="note">Exposure reduction bought with the same budget. "Hottest first" and "lowest canopy first" plant fully in cells ranked by one attribute.</div>
+  </div>
+  <div class="card">
+    <h2>Assumptions</h2>
+    <label for="surv">Sapling survival to maturity</label>
+    <select id="surv"><option value="0.4">40%</option><option value="0.6" selected>60%</option><option value="0.8">80%</option></select>
+    <label for="cool">Cooling per +10 points of canopy</label>
+    <select id="cool"><option value="0.3">Low: 0.3 °C</option><option value="0.6" selected>Mid: 0.6 °C</option><option value="1.0">High: 1.0 °C</option></select>
+    <label for="cost">Planting cost</label>
+    <select id="cost"><option value="0.75">25% cheaper</option><option value="1" selected>Base (about ₹1,800 to ₹3,900 per tree)</option><option value="1.5">50% dearer</option></select>
+    <div class="note">Rules: at least 30% of spend in the most vulnerable cells, no zone above 35% of the budget, ₹20,000 fixed cost per cell planted. All of these are placeholder assumptions to be calibrated.</div>
+  </div>
+</section>
+<section>
+  <div class="card">
+    <div class="tabs" id="layers"><span class="sp"></span><button id="toggle" class="on">Show plan</button></div>
+    <div id="mapwrap"><canvas id="map" width="900" height="900"></canvas><div id="tip"></div></div>
+    <div id="legend"></div>
+  </div>
+  <div class="two">
+    <div class="card">
+      <h2>Where the money goes</h2>
+      <div id="zones"></div>
+    </div>
+    <div class="card">
+      <h2>Returns as the budget grows</h2>
+      <svg id="curve" viewBox="0 0 420 210" width="100%" role="img" aria-label="Exposure reduction against budget"></svg>
+      <div class="note">Share of city-wide heat exposure removed at each budget (log scale). The dot is the current budget.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tabs"><h2 style="margin:0">Top planting sites</h2><span class="sp"></span><button id="copy">Copy full plan as CSV</button></div>
+    <div class="scroll"><table id="sites"></table></div>
+    <textarea id="csvbox" readonly aria-label="Plan CSV"></textarea>
+  </div>
+  <div class="two">
+    <div class="card">
+      <h2>Heat model validation</h2>
+      <div class="scroll"><table id="metrics"></table></div>
+      <div class="note">Random splits score higher because neighbouring cells leak information. Spatial block cross-validation (3 km blocks held out together) is the fair test.</div>
+    </div>
+    <div class="card">
+      <h2>Exact ILP check</h2>
+      <div class="scroll"><table id="check"></table></div>
+      <div class="note">This page runs a fast benefit-per-rupee solver with the same rules. The table compares it with the exact integer linear program (PuLP), run offline at base assumptions. Units: weighted person-°C.</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>How it works</h2>
+    <ol class="pipe">
+      <li><b>Data cube:</b> a 100 m grid with NDVI, NDBI, built-up share, canopy, water, roads, elevation, population and vulnerability.</li>
+      <li><b>Heat model:</b> XGBoost predicts land-surface temperature, tested against Linear Regression and Random Forest.</li>
+      <li><b>Exposure index:</b> heat above the city's cool reference × population × vulnerability weight.</li>
+      <li><b>Feasible sites:</b> cells with enough open land or road verge, excluding water, dense built-up and already wooded cells.</li>
+      <li><b>Optimizer:</b> picks a planting level for each site to maximise exposure reduction within the budget, the equity rule and the zone cap.</li>
+    </ol>
+  </div>
+</section>
+</main>
+<footer>Data: simulated for this prototype. City layout, temperatures and population are synthetic; cost, survival and cooling values are assumptions.</footer>
+
+<script>const DATA=/*__DATA__*/null;</script>
+<script id="solver">
+// ---- shared maths: mirrors src/optimizer.py --------------------------------
+function parseBudget(text){
+  let s=String(text).toLowerCase().replace(/,/g,'').replace(/₹/g,'').replace(/rs\.?/g,'').trim();
+  const m=s.match(/^([0-9]*\.?[0-9]+)\s*([a-z]*)$/); if(!m) return NaN;
+  const u={'':1,k:1e3,thousand:1e3,l:1e5,lac:1e5,lakh:1e5,lakhs:1e5,cr:1e7,crore:1e7,crores:1e7}[m[2]];
+  return u===undefined?NaN:parseFloat(m[1])*u;
+}
+function prepare(D,p){            // cost and benefit of the three planting levels for every site
+  const S=D.sites,n=S.idx.length,L=D.levels;
+  const cost=new Float64Array(n*3),ben=new Float64Array(n*3),trees=new Int32Array(n*3),cool=new Float32Array(n*3);
+  const best=new Uint8Array(n),rmax=new Float64Array(n); let minCost=Infinity;
+  for(let i=0;i<n;i++){
+    const c0=S.can[i]/1e4,H=S.h[i]/1e3,w=S.w[i]/10; let br=-1,bk=0;
+    for(let k=0;k<3;k++){
+      const t=Math.max(Math.round(S.cap[i]*L[k]),1);
+      const c1=Math.min(c0+t*p.survival*p.crown_m2/1e4,0.95);
+      const gain=(c1-c0)+p.threshold_boost*(Math.max(c1-p.threshold,0)-Math.max(c0-p.threshold,0));
+      const dT=Math.min(p.cooling_per_10pp*gain/0.10,H);
+      const c=p.cost_mult*(p.site_fixed_cost+t*S.cpt[i]);
+      trees[i*3+k]=t;cool[i*3+k]=dT;cost[i*3+k]=c;ben[i*3+k]=dT*w;
+      if(c<minCost)minCost=c; const r=dT*w/c; if(r>br){br=r;bk=k;}
+    }
+    best[i]=bk;rmax[i]=br;
+  }
+  const by=(key,dir)=>{const o=new Int32Array(n);for(let i=0;i<n;i++)o[i]=i;return o.sort((a,b)=>dir*(key[a]-key[b]));};
+  return {n,cost,ben,trees,cool,best,rmax,minCost,order:by(rmax,-1),hot:by(S.h,-1),lowcan:by(S.can,1),p};
+}
+function solveGreedy(D,P,budget){ // benefit per rupee, with the equity share and zone cap
+  const S=D.sites,p=P.p,level=new Uint8Array(P.n),zs=new Float64Array(D.zones.length); let spent=0;
+  const fill=(limit,onlyPri)=>{
+    for(let q=0;q<P.n;q++){
+      const i=P.order[q]; if(level[i]||(onlyPri&&!S.pri[i])) continue;
+      if(P.rmax[i]<=0) break;
+      const opts=[P.best[i],1,0];
+      for(const k of opts){const c=P.cost[i*3+k];
+        if(spent+c<=limit&&zs[S.zone[i]]+c<=p.zone_cap*budget&&P.ben[i*3+k]>0){level[i]=k+1;spent+=c;zs[S.zone[i]]+=c;break;}}
+      if(limit-spent<P.minCost) break;
+    }};
+  fill(p.equity_share*budget,true); fill(budget,false);
+  return level;
+}
+function solveRanked(P,order,budget){
+  const level=new Uint8Array(P.n); let spent=0;
+  for(let q=0;q<P.n;q++){const i=order[q],c=P.cost[i*3+2];
+    if(spent+c<=budget){level[i]=3;spent+=c;} else if(budget-spent<P.minCost) break;}
+  return level;
+}
+function evaluate(D,P,level){
+  const S=D.sites,r={sites:0,trees:0,spent:0,red:0,people:0,pri:0,cool:0,zone:D.zones.map(()=>({sites:0,trees:0,cost:0}))};
+  for(let i=0;i<P.n;i++){const l=level[i]; if(!l) continue; const j=i*3+l-1;
+    r.sites++;r.trees+=P.trees[j];r.spent+=P.cost[j];r.red+=P.ben[j];r.people+=S.pop[i];r.cool+=P.cool[j];
+    if(S.pri[i])r.pri+=P.cost[j]; const z=r.zone[S.zone[i]];z.sites++;z.trees+=P.trees[j];z.cost+=P.cost[j];}
+  r.cool=r.sites?r.cool/r.sites:0; r.priShare=r.spent?r.pri/r.spent:0; r.pct=100*r.red/D.totalExposure;
+  return r;
+}
+if(typeof module!=='undefined') module.exports={parseBudget,prepare,solveGreedy,solveRanked,evaluate};
+</script>
+<script>
+(function(){
+const D=DATA,N=D.N,$=id=>document.getElementById(id);
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const LAYERS={
+  heat:{name:'Heat',unit:'°C',label:'Predicted land-surface temperature',ramp:['#fff6d8','#fdd47c','#f79a45','#dc4a1e','#941313','#4c060a'],fmt:v=>v.toFixed(1)+' °C'},
+  exposure:{name:'Exposure',label:'Heat-exposure index (heat × people × vulnerability)',ramp:['#f6f0f7','#d9c2e3','#b085c9','#8447a8','#561b7a','#2c0a45'],fmt:v=>Math.round(v).toLocaleString('en-IN')},
+  canopy:{name:'Canopy',label:'Tree canopy share',ramp:['#f5f1e3','#d5e2b0','#9cc67a','#55a052','#1f7438','#0b4222'],fmt:v=>Math.round(v*100)+'%'},
+  pop:{name:'Population',label:'People per 100 m cell',ramp:['#f1f4f8','#c5d6ea','#8fb1d9','#5687c2','#2b5a9e','#123263'],fmt:v=>Math.round(v).toLocaleString('en-IN')},
+  vuln:{name:'Vulnerability',label:'Vulnerability score (0 to 1)',ramp:['#f4f1ee','#e6cfc9','#d79f9f','#c06a80','#963a6a','#5b1650'],fmt:v=>v.toFixed(2)}
+};
+for(const k in LAYERS){LAYERS[k].g=b64(D.layers[k].b64);LAYERS[k].lo=D.layers[k].lo;LAYERS[k].hi=D.layers[k].hi;}
+const zoneGrid=b64(D.zoneGrid);
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+function rampColor(ramp,t){const x=t*(ramp.length-1),i=Math.min(Math.floor(x),ramp.length-2),f=x-i,a=hex(ramp[i]),b=hex(ramp[i+1]);return a.map((v,j)=>Math.round(v+(b[j]-v)*f));}
+const fmtRs=x=>x>=1e7?'₹'+(x/1e7).toFixed(2)+' Cr':x>=1e5?'₹'+(x/1e5).toFixed(2)+' lakh':'₹'+Math.round(x).toLocaleString('en-IN');
+const num=x=>Math.round(x).toLocaleString('en-IN');
+
+let layer='heat',showPlan=true,budget=1e8,P=null,level=null,res=null,siteOfCell=new Int32Array(N*N).fill(-1);
+D.sites.idx.forEach((c,i)=>siteOfCell[c]=i);
+const cv=$('map'),ctx=cv.getContext('2d'),off=document.createElement('canvas');off.width=off.height=N;
+const octx=off.getContext('2d');
+
+function params(){return Object.assign({},D.params,{survival:+$('surv').value,cooling_per_10pp:+$('cool').value,cost_mult:+$('cost').value});}
+
+function drawMap(){
+  const L=LAYERS[layer],img=octx.createImageData(N,N),d=img.data;
+  const lut=[];for(let v=0;v<256;v++)lut.push(rampColor(L.ramp,Math.max(v-1,0)/254));
+  for(let i=0;i<N*N;i++){const v=L.g[i];if(!v)continue;const c=lut[v];d[i*4]=c[0];d[i*4+1]=c[1];d[i*4+2]=c[2];d[i*4+3]=255;}
+  octx.putImageData(img,0,0);
+  ctx.clearRect(0,0,cv.width,cv.height);ctx.imageSmoothingEnabled=false;ctx.drawImage(off,0,0,cv.width,cv.height);
+  const s=cv.width/N;
+  if(showPlan&&level){
+    const few=res.sites<600;
+    for(let i=0;i<P.n;i++){if(!level[i])continue;const c=D.sites.idx[i],x=(c%N+.5)*s,y=(Math.floor(c/N)+.5)*s;
+      if(few){ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fillStyle='#19c3d3';ctx.fill();ctx.lineWidth=1.6;ctx.strokeStyle='#ffffff';ctx.stroke();ctx.lineWidth=.8;ctx.strokeStyle='#08363c';ctx.beginPath();ctx.arc(x,y,6,0,7);ctx.stroke();}
+      else{ctx.fillStyle='#08363c';ctx.fillRect(x-2.6,y-2.6,5.2,5.2);ctx.fillStyle='#35dcea';ctx.fillRect(x-1.8,y-1.8,3.6,3.6);}}
+  }
+  ctx.font='600 13px "Segoe UI",system-ui,sans-serif';ctx.textAlign='center';
+  [['Majestic',12.977,77.572],['Whitefield',12.985,77.735],['Electronic City',12.850,77.665],['Peenya',13.030,77.520],['Hebbal',13.046,77.586],['Bellandur',12.935,77.675],['Yelahanka',13.100,77.590],['Lalbagh',12.950,77.585]].forEach(([t,la,lo])=>{
+    const x=Math.min(Math.max(((lo-D.lon0)*D.kmLon*10+N/2)*s,50),cv.width-50),y=(N/2-(la-D.lat0)*D.kmLat*10)*s;
+    ctx.lineWidth=3.5;ctx.strokeStyle='rgba(255,255,255,.85)';ctx.strokeText(t,x,y-9);ctx.fillStyle='#1d1b16';ctx.fillText(t,x,y-9);});
+  const g=`linear-gradient(90deg,${L.ramp.join(',')})`;
+  $('legend').innerHTML=`<span>${L.label}</span><span>${L.fmt(L.lo)}</span><span class="ramp" style="background:${g}"></span><span>${L.fmt(L.hi)}</span>`+
+    (showPlan?`<span style="margin-left:10px"><i class="dot"></i> chosen planting cell</span>`:'')+`<span style="margin-left:auto">Place names mark approximate positions</span>`;
+}
+
+function kpi(big,val,lab){return `<div class="kpi${big?' big':''}"><b>${val}</b><span>${lab}</span></div>`;}
+function bar(cls,name,frac,val){return `<div class="row ${cls}"><span>${name}</span><span class="t"><i style="width:${Math.max(frac*100,0.5)}%"></i></span><span class="v">${val}</span></div>`;}
+
+function solve(){
+  level=solveGreedy(D,P,budget);res=evaluate(D,P,level);
+  const hot=evaluate(D,P,solveRanked(P,P.hot,budget)),low=evaluate(D,P,solveRanked(P,P.lowcan,budget));
+  $('kpis').innerHTML=res.sites?
+    kpi(1,res.pct.toFixed(res.pct<1?3:2)+'%','of city-wide heat exposure removed ('+num(res.red)+' weighted person-°C)')+
+    kpi(0,num(res.trees),'trees planted')+kpi(0,num(res.sites),'cells (100 m) planted')+
+    kpi(0,fmtRs(res.spent),'spent of '+fmtRs(budget))+kpi(0,num(res.people),'residents in treated cells')+
+    kpi(0,res.cool.toFixed(2)+' °C','average surface cooling in treated cells')+kpi(0,Math.round(res.priShare*100)+'%','of spend in most vulnerable cells')
+    :kpi(1,'No site fits','This budget is below the cost of the cheapest planting site ('+fmtRs(P.minCost)+').');
+  const mx=Math.max(res.red,hot.red,low.red,1),x=v=>v>0?(res.red/v).toFixed(1)+'×':'';
+  $('compare').innerHTML=bar('me','Optimizer',res.red/mx,num(res.red))+bar('','Hottest first',hot.red/mx,num(hot.red))+bar('','Lowest canopy first',low.red/mx,num(low.red))+
+    (res.sites&&hot.red>0?`<div class="note">The optimizer delivers ${x(hot.red)} the benefit of hottest-first and ${x(low.red)} that of lowest-canopy-first.</div>`:'');
+  const zmx=Math.max(...res.zone.map(z=>z.cost),1);
+  $('zones').innerHTML=res.zone.map((z,i)=>({z,i})).sort((a,b)=>b.z.cost-a.z.cost).map(({z,i})=>bar('z',D.zones[i],z.cost/zmx,fmtRs(z.cost))).join('')+
+    `<div class="note">Zones are approximate sectors of the simulated city.</div>`;
+  const rows=[];for(let i=0;i<P.n;i++)if(level[i])rows.push(i);
+  rows.sort((a,b)=>P.ben[b*3+level[b]-1]-P.ben[a*3+level[a]-1]);
+  const ll=i=>{const c=D.sites.idx[i],r=Math.floor(c/N),q=c%N;return [(D.lat0+((N/2-r-.5)/10)/D.kmLat).toFixed(4),(D.lon0+((q-N/2+.5)/10)/D.kmLon).toFixed(4)];};
+  $('sites').innerHTML='<tr><th>Zone</th><th>Lat, Lon</th><th>Trees</th><th>Cost</th><th>Cooling</th><th>Exposure cut</th><th>Vulnerable</th></tr>'+
+    rows.slice(0,10).map(i=>{const j=i*3+level[i]-1,[la,lo]=ll(i);return `<tr><td>${D.zones[D.sites.zone[i]]}</td><td>${la}, ${lo}</td><td>${P.trees[j]}</td><td>${fmtRs(P.cost[j])}</td><td>${P.cool[j].toFixed(2)} °C</td><td>${num(P.ben[j])}</td><td>${D.sites.pri[i]?'Yes':'No'}</td></tr>`;}).join('');
+  solve.csv=()=>'zone,lat,lon,trees,cost_rs,cooling_degC,exposure_reduction,priority\n'+rows.map(i=>{const j=i*3+level[i]-1,[la,lo]=ll(i);return [D.zones[D.sites.zone[i]],la,lo,P.trees[j],Math.round(P.cost[j]),P.cool[j].toFixed(3),P.ben[j].toFixed(1),D.sites.pri[i]].join(',');}).join('\n');
+  $('csvbox').style.display='none';
+  drawMap();drawCurve();
+}
+
+let curvePts=[];
+function buildCurve(){curvePts=[];for(let e=6;e<=9.001;e+=0.25){const b=Math.pow(10,e);curvePts.push([b,evaluate(D,P,solveGreedy(D,P,b)).pct]);}}
+function drawCurve(){
+  const W=420,H=210,l=44,r=30,t=10,b=30,ymax=Math.max(...curvePts.map(p=>p[1]),res.pct)*1.08||1;
+  const X=v=>l+(Math.log10(Math.min(Math.max(v,1e6),1e9))-6)/3*(W-l-r),Y=v=>H-b-v/ymax*(H-t-b);
+  let s='';for(const [v,lab] of [[1e6,'10 L'],[1e7,'1 Cr'],[1e8,'10 Cr'],[1e9,'100 Cr']])s+=`<line x1="${X(v)}" x2="${X(v)}" y1="${t}" y2="${H-b}" stroke="var(--line)"/><text x="${X(v)}" y="${H-10}" text-anchor="middle">₹${lab}</text>`;
+  for(let i=0;i<=4;i++){const v=ymax*i/4;s+=`<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l-6}" y="${Y(v)+4}" text-anchor="end">${v.toFixed(v<1?2:1)}%</text>`;}
+  s+=`<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${curvePts.map(p=>X(p[0])+','+Y(p[1])).join(' ')}"/>`;
+  s+=`<circle cx="${X(budget)}" cy="${Y(res.pct)}" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>`;
+  $('curve').innerHTML=s;
+}
+
+function setBudget(v,from){
+  if(!(v>0)){$('budget').classList.add('bad');$('parsed').textContent='Could not read that amount. Try "50 lakh" or "2.5 cr".';return;}
+  budget=v;$('budget').classList.remove('bad');
+  if(from!=='text')$('budget').value=v>=1e7?+(v/1e7).toFixed(2)+' crore':+(v/1e5).toFixed(2)+' lakh';
+  if(from!=='slider')$('slider').value=Math.round((Math.log10(Math.min(Math.max(v,1e6),1e9))-6)/3*1000);
+  $('parsed').textContent='= '+fmtRs(v)+'  (₹'+Math.round(v).toLocaleString('en-IN')+')';
+  document.querySelectorAll('#chips button').forEach(b=>b.classList.toggle('on',Math.abs(+b.dataset.v-v)<1));
+  solve();
+}
+function refresh(){P=prepare(D,params());buildCurve();setBudget(budget);}
+
+[['50 lakh',5e6],['1 Cr',1e7],['5 Cr',5e7],['10 Cr',1e8],['20 Cr',2e8],['50 Cr',5e8]].forEach(([t,v])=>{const b=document.createElement('button');b.textContent='₹'+t;b.dataset.v=v;b.onclick=()=>setBudget(v);$('chips').appendChild(b);});
+Object.keys(LAYERS).reverse().forEach(k=>{const b=document.createElement('button');b.textContent=LAYERS[k].name;b.className=k===layer?'on':'';b.onclick=()=>{layer=k;document.querySelectorAll('#layers button[data-l]').forEach(x=>x.classList.toggle('on',x.dataset.l===k));drawMap();};b.dataset.l=k;$('layers').prepend(b);});
+$('toggle').onclick=e=>{showPlan=!showPlan;e.target.classList.toggle('on',showPlan);drawMap();};
+$('budget').addEventListener('change',e=>setBudget(parseBudget(e.target.value),'text'));
+$('budget').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+$('slider').addEventListener('input',e=>{const v=Math.pow(10,6+e.target.value/1000*3);const step=v<1e7?1e5:v<1e8?5e5:5e6;setBudget(Math.round(v/step)*step,'slider');});
+['surv','cool','cost'].forEach(id=>$(id).addEventListener('change',refresh));
+$('copy').onclick=()=>{const t=solve.csv(),b=$('copy');const show=()=>{const x=$('csvbox');x.value=t;x.style.display='block';x.select();};
+  try{navigator.clipboard.writeText(t).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy full plan as CSV',1500);},show);}catch(e){show();}};
+
+const tip=$('tip');
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect(),q=Math.floor((e.clientX-r.left)/r.width*N),w=Math.floor((e.clientY-r.top)/r.height*N),c=w*N+q;
+  if(q<0||w<0||q>=N||w>=N||!LAYERS.heat.g[c]){tip.style.display='none';return;}
+  const val=k=>{const L=LAYERS[k];return L.fmt(L.lo+(L.g[c]-1)/254*(L.hi-L.lo));};
+  let h=`<b>${D.zones[zoneGrid[c]]||''}</b><br>LST ${val('heat')} · canopy ${val('canopy')}<br>people ${val('pop')} · vulnerability ${val('vuln')}`;
+  const i=siteOfCell[c];
+  if(i>=0&&level&&level[i]){const j=i*3+level[i]-1;h+=`<br><b style="color:var(--plan)">In plan:</b> ${P.trees[j]} trees, ${fmtRs(P.cost[j])}, −${P.cool[j].toFixed(2)} °C`;}
+  else if(i>=0)h+='<br>Feasible site, not chosen';else h+='<br>Not a feasible planting site';
+  tip.innerHTML=h;tip.style.display='block';
+  const x=e.clientX-r.left,y=e.clientY-r.top;tip.style.left=Math.min(x+14,r.width-200)+'px';tip.style.top=(y+14)+'px';});
+cv.addEventListener('mouseleave',()=>tip.style.display='none');
+
+$('metrics').innerHTML='<tr><th>Model</th><th>R² random</th><th>R² spatial</th><th>RMSE random</th><th>RMSE spatial</th></tr>'+
+  D.metrics.map(m=>`<tr><td>${m.model}</td><td>${m.r2_random.toFixed(3)}</td><td><b>${m.r2_spatial.toFixed(3)}</b></td><td>${m.rmse_random.toFixed(2)} °C</td><td><b>${m.rmse_spatial.toFixed(2)} °C</b></td></tr>`).join('');
+$('check').innerHTML='<tr><th>Budget</th><th>Exact ILP</th><th>Fast solver</th><th>Gap</th><th>Hottest first</th></tr>'+
+  D.check.map(c=>`<tr><td>₹${c.budget.replace('cr','Cr')}</td><td>${num(c.ilp)}</td><td>${num(c.greedy)}</td><td>${(100*(c.ilp-c.greedy)/c.ilp).toFixed(2)}%</td><td>${num(c.hottest)}</td></tr>`).join('');
+refresh();
+})();
+</script>
+</body>
+</html>
